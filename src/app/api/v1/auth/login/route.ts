@@ -98,7 +98,7 @@ export async function POST(req: Request) {
                         httpOnly: true,
                         secure: process.env.NODE_ENV === "production",
                         sameSite: "strict",
-                        maxAge: 60 * 15, // 15 min
+                        maxAge: 60 * 15,
                         path: "/",
                 });
 
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
                 });
 
                 return NextResponse.json({
-                        message: "Login successful 🎉",
+                        message: "Login successful ",
                         accessToken,
                         refreshToken,
                         user: {
