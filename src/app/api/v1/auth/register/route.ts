@@ -6,6 +6,35 @@ import bcrypt from "bcrypt";
 import { sendOTP } from "@/lib/mail";
 import { generateOTP } from "@/lib/generateOtp";
 
+/**
+ * @swagger
+ * /v1/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Registration successful, OTP sent
+ *       400:
+ *         description: User already exists
+ *       500:
+ *         description: Registration failed
+ */
+
 
 export async function POST(req: Request) {
         try {
