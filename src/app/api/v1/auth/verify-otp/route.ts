@@ -78,7 +78,6 @@ export async function POST(req: Request) {
                         where: { email },
                         data: {
                                 emailVerified: true,
-                                isActive: true,
                                 otp: null,
                                 otpExpiry: null,
                         },

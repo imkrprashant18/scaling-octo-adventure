@@ -71,18 +71,13 @@ export async function POST(req: Request) {
 
                 if (!user.emailVerified) {
                         return NextResponse.json(
-                                { error: "Please verify your email first" },
+                                {
+                                        error: "Please verify your email first",
+                                        emailVerified: false,
+                                },
                                 { status: 403 }
                         );
                 }
-
-                if (!user.isActive) {
-                        return NextResponse.json(
-                                { error: "Account is not active" },
-                                { status: 403 }
-                        );
-                }
-
                 const accessToken = generateAccessToken(user);
                 const refreshToken = generateRefreshToken(user);
 

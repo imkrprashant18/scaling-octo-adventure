@@ -6,29 +6,105 @@ datasource db {
   provider = "postgresql"
 }
 
-
-
 model User {
-  id            String   @id @default(uuid())
-  name          String
-  email         String   @unique
-  password      String
-  phone         String?
-  address       String?
-  role          Role     @default(CUSTOMER)
-  avatar        String?
-  emailVerified Boolean  @default(false)
-  isActive      Boolean  @default(false)
-  otp           String?
-  otpExpiry     DateTime?
-  refreshToken  String? 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String              @id @default(uuid())
+  name                String
+  email               String              @unique
+  password            String
+  phone               String?
+  address             String?
+  role                UserRole            @default(UNASSIGNED)
+  avatar              String?
+  emailVerified       Boolean             @default(false)
+  isActive            Boolean             @default(false)
+  otp                 String?
+  otpExpiry           DateTime?
+  refreshToken        String?
+  specialty           String?
+  experience          Int?
+  credentialUrl       String?
+  opdFee              Int?
+  description         String?             @db.Text
+  verificationStatus  VerificationStatus? @default(PENDING)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  availabilities      Availability[]
+  patientAppointments Appointment[]       @relation("PatientAppointments")
+  doctorAppointments  Appointment[]       @relation("DoctorAppointments")
+  payments            Payment[]
 }
 
-enum Role {
-  CUSTOMER
-  OWNER
+enum UserRole {
+  UNASSIGNED
+  PATIENT
+  DOCTOR
   ADMIN
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model Availability {
+  id        String     @id @default(uuid())
+  doctorId  String
+  doctor    User       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  status    SlotStatus @default(AVAILABLE)
+
+  @@index([doctorId, startTime])
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+}
+
+model Appointment {
+  id                 String            @id @default(uuid())
+  patientId          String
+  patient            User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctorId           String
+  doctor             User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  startTime          DateTime
+  endTime            DateTime
+  status             AppointmentStatus @default(SCHEDULED)
+  notes              String?           @db.Text
+  patientDescription String?           @db.Text
+  payment            Payment?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  PAYMENT_PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  amount        Int
+  status        PaymentStatus @default(PENDING)
+  pidx          String        @unique
+  transactionId String?       @unique
+  khaltiUser    String?
+  appointmentId String        @unique
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
