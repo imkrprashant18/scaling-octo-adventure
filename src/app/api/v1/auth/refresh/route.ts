@@ -82,6 +82,12 @@ export async function POST() {
 
                 return NextResponse.json({
                         message: "Access token refreshed",
+                        accessToken: newAccessToken,
+                        user: {
+                                id: user.id,
+                                email: user.email,
+                                role: user.role,
+                        },
                 });
 
         } catch (error) {

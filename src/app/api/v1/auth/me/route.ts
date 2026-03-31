@@ -18,7 +18,6 @@ import { withAuth, AuthRequest } from "@/lib/withAuth";
 
 const handler = async (req: AuthRequest) => {
         const user = req.user;
-
         return NextResponse.json({
                 message: "User fetched successfully",
                 user: {
