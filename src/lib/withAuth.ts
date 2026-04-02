@@ -3,15 +3,22 @@ import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
 import { User } from "@prisma/client";
 
-export type AuthRequest = Request & { user: User };
+export type AuthRequest = Request & {
+        user: User;
+};
 
-export function withAuth(handler: (req: AuthRequest, user: User) => Promise<Response>) {
-        return async (req: Request) => {
+export function withAuth(
+        handler: (req: AuthRequest) => Promise<Response>
+) {
+        return async (req: Request): Promise<Response> => {
                 try {
                         const cookieHeader = req.headers.get("cookie") || "";
 
                         const cookies = Object.fromEntries(
-                                cookieHeader.split("; ").map((c) => c.split("="))
+                                cookieHeader
+                                        .split(";")
+                                        .map((c) => c.trim().split("="))
+                                        .filter((v) => v.length === 2)
                         );
 
                         const token = cookies["accessToken"];
@@ -23,10 +30,10 @@ export function withAuth(handler: (req: AuthRequest, user: User) => Promise<Resp
                                 );
                         }
 
-                        const decoded: any = jwt.verify(
+                        const decoded = jwt.verify(
                                 token,
-                                process.env.ACCESS_TOKEN_SECRET!
-                        );
+                                process.env.ACCESS_TOKEN_SECRET as string
+                        ) as { id: string };
 
                         const user = await prisma.user.findUnique({
                                 where: { id: decoded.id },
@@ -41,8 +48,8 @@ export function withAuth(handler: (req: AuthRequest, user: User) => Promise<Resp
 
                         (req as AuthRequest).user = user;
 
-                        return handler(req as AuthRequest, user);
-                } catch (err) {
+                        return handler(req as AuthRequest);
+                } catch {
                         return NextResponse.json(
                                 { error: "Invalid or expired token" },
                                 { status: 403 }

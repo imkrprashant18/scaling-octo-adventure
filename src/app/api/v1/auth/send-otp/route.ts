@@ -1,92 +1,64 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
 import { generateOTP } from "@/lib/generateOtp";
 import { sendOTP } from "@/lib/mail";
+import { ApiError } from "@/lib/ApiError";
+import { ApiResponse } from "@/lib/ApiResponse";
+import { asyncHandler } from "@/lib/AsyncHandler";
 
 /**
  * @swagger
- * /v1/auth/verify-otp:
+ * /v1/auth/resend-otp:
  *   post:
- *     summary: Verify OTP to activate account
+ *     summary: Resend OTP to user email
  *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, otp]
- *             properties:
- *               email:
- *                 type: string
- *               otp:
- *                 type: string
- *     responses:
- *       200:
- *         description: Email verified successfully
- *       400:
- *         description: Invalid or expired OTP
- *       404:
- *         description: User not found
- *       500:
- *         description: OTP verification failed
  */
 
-export async function POST(req: Request) {
-        try {
-                const { email } = await req.json();
+export const POST = asyncHandler(async (req: Request) => {
+        const { email } = await req.json();
+        if (!email) {
+                throw new ApiError(400, "Email is required");
+        }
+        const user = await prisma.user.findUnique({
+                where: { email },
+        });
 
-                if (!email) {
-                        return NextResponse.json(
-                                { error: "Email is required" },
-                                { status: 400 }
-                        );
-                }
-
-                const user = await prisma.user.findUnique({
-                        where: { email },
-                });
-
-                if (!user) {
-                        return NextResponse.json(
-                                { error: "User not found" },
-                                { status: 404 }
-                        );
-                }
-
-                if (user.emailVerified) {
-                        return NextResponse.json(
-                                { error: "Email already verified" },
-                                { status: 400 }
-                        );
-                }
-
-                if (user.otpExpiry && new Date() < new Date(user.otpExpiry.getTime() - 4 * 60 * 1000)) {
-                        return NextResponse.json(
-                                { error: "Please wait before requesting another OTP" },
-                                { status: 429 }
-                        );
-                }
-
-                const newOtp = generateOTP();
-                const newExpiry = new Date(Date.now() + 5 * 60 * 1000);
-                await prisma.user.update({
-                        where: { email },
-                        data: {
-                                otp: newOtp,
-                                otpExpiry: newExpiry,
-                        },
-                });
-                await sendOTP(email, newOtp);
-                return NextResponse.json({
-                        message: `OTP sent successfully to ${email}`,
-                        otpExpiry: newExpiry,
-                });
-
-        } catch (error) {
-                return NextResponse.json(
-                        { error: "Failed to resend OTP" },
-                        { status: 500 }
+        if (!user) {
+                throw new ApiError(404, "User not found");
+        }
+        if (user.emailVerified) {
+                throw new ApiError(400, "Email already verified");
+        }
+        if (
+                user.otpExpiry &&
+                new Date() <
+                new Date(user.otpExpiry.getTime() - 4 * 60 * 1000)
+        ) {
+                throw new ApiError(
+                        429,
+                        "Please wait before requesting another OTP"
                 );
         }
-}
+
+        const newOtp = generateOTP();
+        const newExpiry = new Date(Date.now() + 5 * 60 * 1000);
+        await prisma.user.update({
+                where: { email },
+                data: {
+                        otp: newOtp,
+                        otpExpiry: newExpiry,
+                },
+        });
+
+        await sendOTP(email, newOtp);
+
+        return Response.json(
+                new ApiResponse(
+                        200,
+                        {
+                                email,
+                                otpExpiry: newExpiry,
+                        },
+                        `OTP sent successfully to ${email}`
+                )
+        );
+});
