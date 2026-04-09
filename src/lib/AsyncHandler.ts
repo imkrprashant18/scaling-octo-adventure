@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { ApiError } from "@/lib/ApiError";
 import { ApiResponse } from "@/lib/ApiResponse";
 
-type Handler<T = unknown> = (req: Request) => Promise<Response>;
+type RouteContext = { params: Record<string, string> };
+type Handler<TReq = Request> = (req: TReq, ctx?: RouteContext) => Promise<Response>;
 
-export const asyncHandler = <T = unknown>(handler: Handler<T>) => {
-        return async (req: Request): Promise<Response> => {
+export const asyncHandler = <TReq = Request>(handler: Handler<TReq>) => {
+        return async (req: TReq, ctx?: RouteContext): Promise<Response> => {
                 try {
-                        return await handler(req);
+                        return await handler(req, ctx);
                 } catch (error: unknown) {
                         if (error instanceof ApiError) {
                                 return NextResponse.json(
@@ -15,6 +16,7 @@ export const asyncHandler = <T = unknown>(handler: Handler<T>) => {
                                         { status: error.statusCode }
                                 );
                         }
+
                         return NextResponse.json(
                                 new ApiResponse(500, null, "Internal Server Error"),
                                 { status: 500 }

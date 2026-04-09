@@ -2,56 +2,40 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { withAuth, AuthRequest } from "@/lib/withAuth";
+import { ApiError } from "@/lib/ApiError";
+import { ApiResponse } from "@/lib/ApiResponse";
+import { asyncHandler } from "@/lib/AsyncHandler";
 
-const handler = async (req: AuthRequest) => {
-        try {
-                const body = await req.json();
-                const { userId } = body;
-                if (!userId) {
-                        return NextResponse.json(
-                                { error: "User ID is required" },
-                                { status: 400 }
-                        );
-                }
+const handler = asyncHandler<AuthRequest>(async (req) => {
+        const body = await req.json();
+        const { userId, phone, address } = body;
 
-
-                const user = await prisma.user.findUnique({
-                        where: { id: userId },
-                });
-
-                if (!user) {
-                        return NextResponse.json(
-                                { error: "User not found" },
-                                { status: 404 }
-                        );
-                }
-
-                if (user.role !== UserRole.UNASSIGNED) {
-                        return NextResponse.json(
-                                { error: "User role already assigned" },
-                                { status: 400 }
-                        );
-                }
-
-                const updatedUser = await prisma.user.update({
-                        where: { id: userId },
-                        data: {
-                                role: UserRole.PATIENT,
-                                isActive: true,
-                                verificationStatus: "VERIFIED",
-                        },
-                });
-
-                return NextResponse.json({
-                        message: "User role updated to PATIENT",
-                        user: updatedUser,
-                });
-        } catch (error) {
-                return NextResponse.json(
-                        { error: "Something went wrong" },
-                        { status: 500 }
-                );
+        if ((!phone && !address) || !userId) {
+                throw new ApiError(400, "User ID is required");
         }
-};
+
+        const user = await prisma.user.findUnique({
+                where: { id: userId },
+        });
+
+        if (!user) {
+                throw new ApiError(404, "User not found");
+        }
+
+        if (user.role !== UserRole.UNASSIGNED) {
+                throw new ApiError(400, "User role already assigned");
+        }
+        const updatedUser = await prisma.user.update({
+                where: { id: userId },
+                data: {
+                        role: UserRole.PATIENT,
+                        isActive: true,
+                        verificationStatus: "VERIFIED",
+                },
+        });
+        return NextResponse.json(
+                new ApiResponse(200, updatedUser, "User role updated to PATIENT")
+        );
+});
 
 export const PATCH = withAuth(handler);

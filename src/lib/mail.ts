@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { ApiError } from "@/lib/ApiError";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,7 +20,7 @@ export async function sendOTP(email: string, otp: string) {
                 });
         } catch (error) {
                 console.error("Resend OTP error:", error);
-                throw new Error("Failed to send OTP email");
+                throw new ApiError(500, "Failed to send OTP email");
         }
 }
 

@@ -18,6 +18,7 @@ import { asyncHandler } from "@/lib/AsyncHandler";
 
 export const POST = asyncHandler(async (req: Request) => {
         const { name, email, password } = await req.json();
+
         if (!name || !email || !password) {
                 throw new ApiError(400, "All fields are required");
         }
@@ -27,6 +28,7 @@ export const POST = asyncHandler(async (req: Request) => {
         if (existing) {
                 throw new ApiError(400, "User already exists");
         }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const otp = generateOTP();
         const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
