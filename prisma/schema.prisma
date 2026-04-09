@@ -14,6 +14,8 @@ model User {
   phone               String?
   address             String?
   role                UserRole            @default(UNASSIGNED)
+  gender              Gender?
+  dob                 DateTime?
   avatar              String?
   emailVerified       Boolean             @default(false)
   isActive            Boolean             @default(false)
@@ -35,6 +37,12 @@ model User {
   patientAppointments Appointment[]       @relation("PatientAppointments")
   doctorAppointments  Appointment[]       @relation("DoctorAppointments")
   payments            Payment[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }
 
 enum UserRole {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { UserRole, Gender, VerificationStatus } from "@prisma/client";
 import { withAuth, AuthRequest } from "@/lib/withAuth";
 import { ApiError } from "@/lib/ApiError";
 import { ApiResponse } from "@/lib/ApiResponse";
@@ -16,6 +16,8 @@ const handler = asyncHandler<AuthRequest>(async (req) => {
         const experience = formData.get("experience") as string;
         const description = formData.get("description") as string;
         const opdFee = formData.get("opdFee") as string;
+        const gender = formData.get("gender")?.toString().toUpperCase() as Gender | null;
+        const dob = formData.get("dob") as string;
         const avatar = formData.get("avatar") as File | null;
         const credentialFile = formData.get("credential") as File | null;
 
@@ -25,6 +27,14 @@ const handler = asyncHandler<AuthRequest>(async (req) => {
 
         const user = await prisma.user.findUnique({
                 where: { id: userId },
+                select: {
+                        id: true,
+                        role: true,
+                        avatar: true,
+                        credentialUrl: true,
+                        gender: true,
+                        dob: true,
+                },
         });
 
         if (!user) {
@@ -112,13 +122,17 @@ const handler = asyncHandler<AuthRequest>(async (req) => {
                         opdFee: opdFee ? parseInt(opdFee) : null,
                         credentialUrl,
                         avatar: avatarUrl,
-                        verificationStatus: "PENDING",
+                        gender: gender || user.gender,
+                        dob: dob ? new Date(dob) : user.dob,
+                        verificationStatus: VerificationStatus.PENDING,
                 },
                 select: {
                         id: true,
                         role: true,
                         credentialUrl: true,
                         avatar: true,
+                        gender: true,
+                        dob: true,
                 },
         });
 

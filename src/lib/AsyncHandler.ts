@@ -17,8 +17,9 @@ export const asyncHandler = <TReq = Request>(handler: Handler<TReq>) => {
                                 );
                         }
 
+                        const message = error instanceof Error ? error.message : "Internal Server Error";
                         return NextResponse.json(
-                                new ApiResponse(500, null, "Internal Server Error"),
+                                new ApiResponse(500, null, message),
                                 { status: 500 }
                         );
                 }
