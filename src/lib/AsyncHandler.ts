@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ApiError } from "@/lib/ApiError";
 import { ApiResponse } from "@/lib/ApiResponse";
 
-type RouteContext = { params: Record<string, string> };
+type RouteContext = { params: Promise<Record<string, string>> };
 type Handler<TReq = Request> = (req: TReq, ctx?: RouteContext) => Promise<Response>;
 
 export const asyncHandler = <TReq = Request>(handler: Handler<TReq>) => {

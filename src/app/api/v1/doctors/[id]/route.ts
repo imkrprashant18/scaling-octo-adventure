@@ -5,7 +5,7 @@ import { ApiError } from "@/lib/ApiError";
 import { ApiResponse } from "@/lib/ApiResponse";
 
 export const GET = asyncHandler(async (req, ctx) => {
-        const id = ctx?.params?.id;
+        const { id } = await (ctx?.params ?? Promise.resolve({ id: "" }));
 
         if (!id) {
                 throw new ApiError(400, "Doctor id is required");
