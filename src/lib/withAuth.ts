@@ -8,9 +8,9 @@ export type AuthRequest = Request & {
 };
 
 export function withAuth(
-        handler: (req: AuthRequest) => Promise<Response>
+        handler: (req: AuthRequest, ctx?: any) => Promise<Response>
 ) {
-        return async (req: Request): Promise<Response> => {
+        return async (req: Request, ctx?: any): Promise<Response> => {
                 try {
                         const cookieHeader = req.headers.get("cookie") || "";
 
@@ -48,7 +48,7 @@ export function withAuth(
 
                         (req as AuthRequest).user = user;
 
-                        return handler(req as AuthRequest);
+                        return handler(req as AuthRequest, ctx);
                 } catch {
                         return NextResponse.json(
                                 { error: "Invalid or expired token" },
