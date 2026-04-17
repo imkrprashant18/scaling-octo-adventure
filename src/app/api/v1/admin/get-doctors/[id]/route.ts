@@ -41,11 +41,6 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                         createdAt: true,
                         updatedAt: true,
                         availabilities: {
-                                where: {
-                                        endTime: {
-                                                gte: new Date(),
-                                        },
-                                },
                                 orderBy: {
                                         startTime: "asc",
                                 },
@@ -54,7 +49,7 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                                         startTime: true,
                                         endTime: true,
                                 },
-                        },
+                        }
                 },
         });
 
