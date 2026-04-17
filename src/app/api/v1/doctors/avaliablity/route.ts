@@ -13,16 +13,16 @@ export const handler = asyncHandler(
                 const body = await req.json();
                 const parsed = createAvailabilitySchema.safeParse(body);
                 if (!parsed.success) {
-                        throw new ApiError(
-                                400,
-                                "Invalid input",
-                                [parsed.error.flatten()]
-                        );
+                        throw new ApiError(400, "Invalid input");
                 }
+
                 const { startTime, endTime } = parsed.data;
+
                 const doctorId = req.user.id;
+
                 const start = new Date(startTime);
                 const end = new Date(endTime);
+
                 if (start >= end) {
                         throw new ApiError(400, "startTime must be before endTime");
                 }
@@ -32,18 +32,45 @@ export const handler = asyncHandler(
                                 doctorId,
                                 OR: [
                                         {
-                                                startTime: { lte: end },
-                                                endTime: { gte: start },
+                                                startTime: { lt: end },
+                                                endTime: { gt: start },
                                         },
                                 ],
                         },
                 });
 
                 if (overlap) {
-                        throw new ApiError(
-                                409,
-                                "Overlapping availability exists"
+                        throw new ApiError(409, "Availability slot overlaps with existing slot");
+                }
+
+                const existingSlots = await prisma.availability.findMany({
+                        where: { doctorId },
+                        include: {
+                                doctor: {
+                                        select: {
+                                                doctorAppointments: true,
+                                        },
+                                },
+                        },
+                });
+
+                const slotsToDelete = existingSlots.filter((slot) => {
+                        const hasAppointment = slot.doctor.doctorAppointments?.some(
+                                (appt) =>
+                                        appt.startTime.getTime() === slot.startTime.getTime()
                         );
+
+                        return !hasAppointment;
+                });
+
+                if (slotsToDelete.length > 0) {
+                        await prisma.availability.deleteMany({
+                                where: {
+                                        id: {
+                                                in: slotsToDelete.map((s) => s.id),
+                                        },
+                                },
+                        });
                 }
 
                 const availability = await prisma.availability.create({
@@ -55,12 +82,14 @@ export const handler = asyncHandler(
                 });
 
                 return NextResponse.json(
-                        new ApiResponse(201, availability, "Availability created successfully"),
+                        new ApiResponse(
+                                201,
+                                availability,
+                                "Availability created successfully"
+                        ),
                         { status: 201 }
                 );
         })
 );
-
-
 
 export const POST = withAuth(handler);
