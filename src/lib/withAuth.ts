@@ -7,6 +7,7 @@ export type AuthRequest = Request & {
         user: User;
 };
 
+
 export function withAuth(
         handler: (req: AuthRequest, ctx?: any) => Promise<Response>
 ) {
