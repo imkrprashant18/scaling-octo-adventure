@@ -12,6 +12,8 @@ type Slot = {
         endTime: string;
         formatted: string;
         day: string;
+        status: "available" | "booked";
+        bookedBy?: string;
 };
 
 const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
@@ -28,6 +30,7 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                 throw new ApiError(400, "Doctor id is required");
         }
 
+        // Optimized: Fetch doctor with availability in single query
         const doctor = await prisma.user.findUnique({
                 where: {
                         id: doctorId,
@@ -35,45 +38,54 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                         verificationStatus: "VERIFIED",
                         isActive: true,
                 },
+                include: {
+                        availabilities: {
+                                where: {
+                                        status: "AVAILABLE",
+                                },
+                                take: 1,
+                        },
+                },
         });
 
         if (!doctor) {
                 throw new ApiError(404, "Doctor not found or not verified");
         }
 
-        const availability = await prisma.availability.findFirst({
-                where: {
-                        doctorId: doctor.id,
-                        status: "AVAILABLE",
-                },
-        });
-
-        if (!availability) {
+        if (!doctor.availabilities.length) {
                 throw new ApiError(404, "No availability set by doctor");
         }
 
-
+        const availability = doctor.availabilities[0];
         const now = new Date();
-        const days = [
-                now,
-                addDays(now, 1),
-                addDays(now, 2),
-                addDays(now, 3),
-        ];
-
+        const days = [now, addDays(now, 1), addDays(now, 2), addDays(now, 3)];
         const lastDay = endOfDay(days[3]);
 
-
-        const existingAppointments = await prisma.appointment.findMany({
+        // Optimized: Fetch all appointments in one query with all relevant statuses
+        const bookedAppointments = await prisma.appointment.findMany({
                 where: {
                         doctorId: doctor.id,
-                        status: "SCHEDULED",
+                        status: {
+                                in: ["SCHEDULED", "PAYMENT_PENDING", "COMPLETED"],
+                        },
                         startTime: {
                                 lte: lastDay,
                         },
+                        endTime: {
+                                gte: now,
+                        },
+                },
+                select: {
+                        startTime: true,
+                        endTime: true,
+                        patient: {
+                                select: {
+                                        id: true,
+                                        name: true,
+                                },
+                        },
                 },
         });
-
 
         const availableSlotsByDay: Record<string, Slot[]> = {};
 
@@ -110,7 +122,8 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                                 continue;
                         }
 
-                        const overlaps = existingAppointments.some((appointment) => {
+                        // Check if slot is booked
+                        const bookedSlot = bookedAppointments.find((appointment) => {
                                 const aStart = new Date(appointment.startTime);
                                 const aEnd = new Date(appointment.endTime);
 
@@ -121,18 +134,30 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                                 );
                         });
 
-                        if (!overlaps) {
-                                availableSlotsByDay[dayString].push({
-                                        startTime: current.toISOString(),
-                                        endTime: next.toISOString(),
-                                        formatted: `${format(current, "h:mm a")} - ${format(next, "h:mm a")}`,
-                                        day: format(current, "EEEE, MMMM d"),
-                                });
-                        }
+                        const slot: Slot = {
+                                startTime: current.toISOString(),
+                                endTime: next.toISOString(),
+                                formatted: `${format(current, "h:mm a")} - ${format(next, "h:mm a")}`,
+                                day: format(current, "EEEE, MMMM d"),
+                                status: bookedSlot ? "booked" : "available",
+                                ...(bookedSlot && { bookedBy: bookedSlot.patient.name }),
+                        };
 
+                        availableSlotsByDay[dayString].push(slot);
                         current = next;
                 }
         }
+
+        // Calculate statistics
+        const stats = Object.values(availableSlotsByDay).reduce(
+                (acc, slots) => {
+                        acc.totalSlots += slots.length;
+                        acc.availableSlots += slots.filter((s) => s.status === "available").length;
+                        acc.bookedSlots += slots.filter((s) => s.status === "booked").length;
+                        return acc;
+                },
+                { totalSlots: 0, availableSlots: 0, bookedSlots: 0 }
+        );
 
         const result = Object.entries(availableSlotsByDay).map(([date, slots]) => ({
                 date,
@@ -140,11 +165,27 @@ const handler = asyncHandler<AuthRequest>(async (req, ctx) => {
                         slots.length > 0
                                 ? slots[0].day
                                 : format(new Date(date), "EEEE, MMMM d"),
+                totalSlots: slots.length,
+                availableSlots: slots.filter((s) => s.status === "available").length,
+                bookedSlots: slots.filter((s) => s.status === "booked").length,
                 slots,
         }));
 
         return NextResponse.json(
-                new ApiResponse(200, { days: result }, "Available slots fetched successfully")
+                new ApiResponse(
+                        200,
+                        {
+                                doctor: {
+                                        id: doctor.id,
+                                        name: doctor.name,
+                                        specialty: doctor.specialty,
+                                        opdFee: doctor.opdFee,
+                                },
+                                stats,
+                                days: result,
+                        },
+                        "Slots fetched successfully"
+                )
         );
 });
 
