@@ -1,9 +1,13 @@
+"use client";
 
+import LoginForm from '@/components/auth/login-form'
 
-const Home = () => {
+const HomePage = () => {
   return (
-    <div>Home</div>
+    <div className="w-full min-h-screen flex items-center justify-center bg-background">
+      <LoginForm />
+    </div>
   )
 }
 
-export default Home
+export default HomePage
