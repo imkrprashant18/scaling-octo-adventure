@@ -42,6 +42,7 @@ export async function sendVerificationSuccess(email: string) {
 }
 
 
+// 
 export async function sendAppoimentSuccess(email: string, name: string) {
         try {
                 await resend.emails.send({
@@ -52,6 +53,7 @@ export async function sendAppoimentSuccess(email: string, name: string) {
         <h2>✅ Appointment Booked</h2>
         <p>Dear ${name}, your appointment has been successfully booked.</p>
       `,
+
                 });
         } catch (error) {
                 console.log("Appointment email error:", error);
