@@ -6,7 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendOTP(email: string, otp: string) {
         try {
                 await resend.emails.send({
-                        from: "Salon App <onboarding@resend.dev>",
+                        from: process.env.EMAIL_FROM!,
                         to: email,
                         subject: "Your OTP Code",
                         html: `
@@ -27,7 +27,7 @@ export async function sendOTP(email: string, otp: string) {
 export async function sendVerificationSuccess(email: string) {
         try {
                 await resend.emails.send({
-                        from: "Your App <no-reply@yourapp.com>",
+                        from: process.env.EMAIL_FROM!,
                         to: email,
                         subject: "Email Verified Successfully",
                         html: `
@@ -38,5 +38,22 @@ export async function sendVerificationSuccess(email: string) {
                 });
         } catch (error) {
                 console.log("Verification email error:", error);
+        }
+}
+
+
+export async function sendAppoimentSuccess(email: string, name: string) {
+        try {
+                await resend.emails.send({
+                        from: process.env.EMAIL_FROM!,
+                        to: email,
+                        subject: "Appointment Booked Successfully",
+                        html: `
+        <h2>✅ Appointment Booked</h2>
+        <p>Dear ${name}, your appointment has been successfully booked.</p>
+      `,
+                });
+        } catch (error) {
+                console.log("Appointment email error:", error);
         }
 }

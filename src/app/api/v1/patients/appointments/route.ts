@@ -1,6 +1,7 @@
 import { ApiError } from "@/lib/ApiError";
 import { ApiResponse } from "@/lib/ApiResponse";
 import { asyncHandler } from "@/lib/AsyncHandler";
+import { sendAppoimentSuccess } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
 import { AuthRequest, withAuth } from "@/lib/withAuth";
 import { withRole } from "@/lib/withRole";
@@ -21,7 +22,6 @@ const handler = asyncHandler(withRole([UserRole.PATIENT], async (req: AuthReques
                 throw new ApiError(400, "Doctor ID, start time, and end time are required");
         }
 
-        // Validate time slot
         const start = new Date(startTime);
         const end = new Date(endTime);
 
@@ -45,7 +45,6 @@ const handler = asyncHandler(withRole([UserRole.PATIENT], async (req: AuthReques
                 throw new ApiError(404, "Doctor not found or not verified");
         }
 
-        // Check for overlapping appointments with the doctor (excluding cancelled ones)
         const overlappingAppointment = await prisma.appointment.findFirst({
                 where: {
                         doctorId: doctorId,
@@ -64,7 +63,6 @@ const handler = asyncHandler(withRole([UserRole.PATIENT], async (req: AuthReques
                 throw new ApiError(409, "This time slot is already booked with the doctor. Please choose another time.");
         }
 
-        // Check for duplicate bookings - patient cannot have multiple appointments at the same time
         const patientDuplicateBooking = await prisma.appointment.findFirst({
                 where: {
                         patientId: patientId,
@@ -104,7 +102,10 @@ const handler = asyncHandler(withRole([UserRole.PATIENT], async (req: AuthReques
                         payment: true,
                 },
         });
-
+        await sendAppoimentSuccess(
+                req.user.email,
+                req.user.name
+        );
         return NextResponse.json(
                 new ApiResponse(200, appointment, "Appointment booked successfully. Please proceed with payment.")
         );

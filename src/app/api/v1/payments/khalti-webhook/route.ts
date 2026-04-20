@@ -2,11 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 
-/**
- * POST /api/v1/payments/khalti-webhook
- * Handle Khalti webhook notifications for payment completion
- * This is called by Khalti servers asynchronously
- */
 export const POST = async (req: any) => {
         try {
                 // Verify Khalti webhook signature
